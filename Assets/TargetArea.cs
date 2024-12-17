@@ -7,7 +7,7 @@ public class TargetArea : MonoBehaviour
 {
     private static List<int> playersWhoDelivered = new List<int>(); // רשימה של השחקנים שהביאו את האוכל
 
-    //test
+    //test212213
     // כאשר האוכל נכנס לאזור המטרה
     private void OnTriggerEnter2D(Collider2D collision)
     {
