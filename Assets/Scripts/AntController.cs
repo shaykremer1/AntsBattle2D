@@ -13,6 +13,7 @@ public class AntMovement : MonoBehaviour
     public KeyCode moveForwardKey = KeyCode.W;
     public KeyCode rotateLeftKey = KeyCode.A;
     public KeyCode rotateRightKey = KeyCode.D;
+    public KeyCode moveBackwardKey = KeyCode.S;
     public KeyCode pickupKey = KeyCode.Space;
     public KeyCode balanceRightKey = KeyCode.R;
     public KeyCode balanceLeftKey = KeyCode.E;
@@ -20,6 +21,10 @@ public class AntMovement : MonoBehaviour
     [Header("Movement Settings")]
     public float moveSpeed = 2f;
     public float rotationSpeed = 200f;
+
+    [Header("Animation")]
+    [SerializeField]
+    private Animator _animator;
 
     private FoodCarry currentFood;
     private float defaultSpeed;
@@ -48,7 +53,36 @@ public class AntMovement : MonoBehaviour
         {
             Vector3 movement = transform.up * moveSpeed * Time.deltaTime;
             transform.Translate(movement, Space.World);
+            _animator.SetFloat("Direction", 1f);
+            _animator.SetBool("IsWalking", true);
+            Debug.Log("walking Forward!");
         }
+        else
+        {
+            if (Input.GetKeyUp(moveForwardKey))
+            {
+                Debug.Log("STOPPED!");
+                _animator.SetBool("IsWalking", false);
+            }
+        }
+        if (Input.GetKey(moveBackwardKey))
+        {
+            Debug.Log("walking Back!");
+            Vector3 movement = -0.5f * transform.up * moveSpeed * Time.deltaTime;
+            transform.Translate(movement, Space.World);
+            _animator.SetFloat("Direction", -1f);
+            _animator.SetBool("IsWalking", true);
+        }
+        else
+        {
+            if (Input.GetKeyUp(moveBackwardKey))
+            {
+                Debug.Log("STOPPED!");
+                _animator.SetBool("IsWalking", false);
+            }
+        }
+
+
     }
 
     private void HandleRotation()
