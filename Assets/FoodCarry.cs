@@ -25,7 +25,7 @@ public class FoodCarry : MonoBehaviour
     [Header("Speed Settings")]
     public float speedReductionFactor = 0.5f; // הפחתת מהירות לנמלה הראשונה
     public float speedBoostWithSecondAnt = 1.2f; // תוספת מהירות עם נמלה שנייה
-
+    public float heightValue = 0.5f;
     void Start()
     {
         totalFoodCount++; // הגדלת הספירה של הפירות בתחילת המשחק
@@ -36,18 +36,37 @@ public class FoodCarry : MonoBehaviour
     {
         if (isCarried)
         {
-            HandleCarriedMovement();
-            HandleBalance();
+            HandleCarriedMovement(); // תזוזת האוכל
+            HandleBalance();         // טיפול באיזון
         }
-    }
 
+    }
     private void HandleCarriedMovement()
     {
         if (leadAnt != null)
         {
-            transform.position = leadAnt.position + Vector3.up * 0.3f; // מיקום האוכל על גב הנמלה
+            // מיקום האוכל במרכז בין הנמלה הראשונה והשנייה
+            if (secondAnt != null)
+            {
+                // הנמלה השנייה עוקבת אחרי הנמלה הראשונה
+                Vector3 followPosition = leadAnt.position - leadAnt.up * 0.5f;
+                secondAnt.position = Vector3.Lerp(secondAnt.position, followPosition, Time.deltaTime * 10f);
+
+                // סיבוב הנמלה השנייה להתאים לנמלה הראשונה
+                secondAnt.rotation = Quaternion.Lerp(secondAnt.rotation, leadAnt.rotation, Time.deltaTime * 10f);
+
+                // עדכון מיקום האוכל
+                transform.position = (leadAnt.position + secondAnt.position) / 2;
+            }
+            else
+            {
+                // מיקום רגיל אם יש רק נמלה אחת
+                transform.position = leadAnt.position + Vector3.up * 0.3f;
+            }
         }
     }
+
+
 
     public bool HasSecondAnt()
     {
@@ -60,40 +79,54 @@ public class FoodCarry : MonoBehaviour
     }
     private void HandleBalance()
     {
-        if (leadAnt != null)
+        AntMovement balancingAnt = null;
+
+        if (secondAnt != null) // אם יש נמלה שנייה, היא שולטת על האיזון
         {
-            AntMovement leadAntMovement = leadAnt.GetComponent<AntMovement>();
-            float currentBalanceSpeed = (secondAnt != null) ? balanceSpeedWithSecondAnt : balanceSpeed;
+            balancingAnt = secondAnt.GetComponent<AntMovement>();
+        }
+        else if (leadAnt != null) // אחרת, הנמלה הראשונה שולטת
+        {
+            balancingAnt = leadAnt.GetComponent<AntMovement>();
+        }
 
+        if (balancingAnt != null)
+        {
             // שליטה ידנית באיזון
-            if (leadAntMovement.IsBalancingRight()) balanceOffset += currentBalanceSpeed * Time.deltaTime;
-            if (leadAntMovement.IsBalancingLeft()) balanceOffset -= currentBalanceSpeed * Time.deltaTime;
+            if (balancingAnt.IsBalancingRight())
+                balanceOffset += (balanceSpeed * 0.5f) * Time.deltaTime; // איטי יותר
+            if (balancingAnt.IsBalancingLeft())
+                balanceOffset -= (balanceSpeed * 0.5f) * Time.deltaTime; // איטי יותר
+        }
 
-            // השפעת הסיבוב של הנמלה
-            float currentRotation = leadAnt.eulerAngles.z;
-            float rotationChange = Mathf.DeltaAngle(previousRotation, currentRotation);
-            balanceOffset += rotationChange * rotationImpact;
-            previousRotation = currentRotation;
+        // כוח גרביטציה מדומה – האוכל נשמט לצד הנוטה באיטיות
+        balanceOffset = Mathf.Lerp(balanceOffset, balanceOffset + Mathf.Sign(balanceOffset) * (tiltSpeed * 0.5f), Time.deltaTime);
 
-            // נטייה הדרגתית של האוכל
-            balanceOffset = Mathf.Lerp(balanceOffset, balanceOffset + Mathf.Sign(balanceOffset) * tiltSpeed, Time.deltaTime);
+        // השפעת סיבוב על האיזון (פי 2 איטי יותר)
+        float currentRotation = leadAnt.eulerAngles.z;
+        float rotationChange = Mathf.DeltaAngle(previousRotation, currentRotation);
+        balanceOffset += (rotationChange * rotationImpact * 0.5f);
 
-            // עדכון סיבוב האוכל
-            transform.rotation = Quaternion.Euler(0, 0, -balanceOffset * rotationSpeed);
+        previousRotation = currentRotation;
 
-            // אם האיזון חורג מהגבול המותר, האוכל נופל
-            if (Mathf.Abs(balanceOffset) > maxBalanceOffset)
-            {
-                DropFood(false);
-                Debug.Log("Food fell due to imbalance!");
-            }
+        // עדכון סיבוב האוכל
+        transform.rotation = Quaternion.Euler(0, 0, -balanceOffset * rotationSpeed);
+
+        // בדיקת חריגה מהאיזון
+        if (Mathf.Abs(balanceOffset) > maxBalanceOffset)
+        {
+            DropFood(false);
+            Debug.Log("Food fell due to imbalance!");
         }
     }
+
+
 
     public void PickUpFood(Transform ant, int antPlayerID)
     {
         if (!isCarried)
         {
+            // אם אין מובילה, זו הנמלה המובילה
             leadAnt = ant;
             isCarried = true;
             balanceOffset = 0f;
@@ -106,9 +139,10 @@ public class FoodCarry : MonoBehaviour
             antMovement.SetMoveSpeed(antMovement.moveSpeed * speedReductionFactor);
             Debug.Log($"Player {antPlayerID} picked up food of Player {playerID}");
         }
-        else
+        else if (leadAnt != null && secondAnt == null)
         {
-            DropFood(true);
+            // אם יש כבר מובילה, הנמלה השנייה מצטרפת
+            JoinSecondAnt(ant);
         }
     }
 
@@ -118,40 +152,57 @@ public class FoodCarry : MonoBehaviour
 
         if (leadAnt != null)
         {
-            AntMovement antMovement = leadAnt.GetComponent<AntMovement>();
-            antMovement.ResetSpeed();
+            AntMovement leadMovement = leadAnt.GetComponent<AntMovement>();
+            leadMovement.ResetSpeed(); // איפוס מהירות
+            leadAnt = null;
         }
 
-        leadAnt = null;
-        secondAnt = null;
+        if (secondAnt != null)
+        {
+            secondAnt.SetParent(null);
+            AntMovement secondMovement = secondAnt.GetComponent<AntMovement>();
+            secondMovement.UnlockMovement(); // החזרת שליטה לנמלה השנייה
+            secondAnt = null;
+        }
+
         balanceOffset = 0f;
+        previousRotation = 0f;
 
         if (manuallyPlaced)
         {
-            lastStablePosition = transform.position; // עדכון מיקום יציב חדש
-            Debug.Log("Food placed manually!");
+            lastStablePosition = transform.position;
+            Debug.Log("Food placed manually.");
         }
         else
         {
-            transform.position = lastStablePosition; // חזרה למיקום היציב האחרון
-            Debug.Log("Food fell!");
+            transform.position = lastStablePosition;
+            Debug.Log("Food fell and reset.");
         }
 
         transform.rotation = Quaternion.identity;
     }
 
+
     public void JoinSecondAnt(Transform secondAntTransform)
     {
-        if (secondAnt == null)
+        if (secondAnt == null && leadAnt != null)
         {
             secondAnt = secondAntTransform;
-            AntMovement leadAntMovement = leadAnt.GetComponent<AntMovement>();
 
-            // הגדלת מהירות עם נמלה שנייה
-            leadAntMovement.SetMoveSpeed(leadAntMovement.moveSpeed * speedBoostWithSecondAnt);
-            Debug.Log("Second ant joined to help carry the food!");
+            // מיקום הנמלה השנייה בזנב של הנמלה הראשונה
+            Vector3 secondAntPosition = leadAnt.position - leadAnt.up * 0.5f; // חצי יחידה מאחורי הראשונה
+            secondAnt.position = secondAntPosition;
+            // מיקום הפרי בין שתי הנמלים עם הרמה קלה למעלה
+            transform.position = (leadAnt.position + secondAnt.position) / 2 + Vector3.up * heightValue;
+            Debug.Log("root position fruit"+ gameObject.transform.position);
+
+            // איפוס האיזון כאשר הנמלה השנייה מצטרפת
+            balanceOffset = 0f;
+
+            Debug.Log("Second ant joined. Food repositioned and balanced.");
         }
     }
+
 
     void OnDestroy()
     {
