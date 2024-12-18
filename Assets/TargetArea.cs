@@ -7,6 +7,7 @@ public class TargetArea : MonoBehaviour
 {
     private static List<int> playersWhoDelivered = new List<int>(); // רשימה של השחקנים שהביאו את האוכל
 
+    //wtf
     //test212213
     //alonppppp
     // כאשר האוכל נכנס לאזור המטרה
