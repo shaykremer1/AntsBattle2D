@@ -108,6 +108,7 @@ MonoBehaviour:
   rotationSpeed: 60
   speedReductionFactor: 0.5
   speedBoostWithSecondAnt: 1.2
+  heightValue: 0.5
 --- !u!61 &5084931903571064898
 BoxCollider2D:
   m_ObjectHideFlags: 0

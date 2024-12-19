@@ -20,12 +20,12 @@ public class AntSpawner : MonoBehaviour
     public static List<int> remainingPlayers = new List<int>();
 
     // מיפוי של מקשים לפי שחקן
-    private Dictionary<int, (KeyCode forward, KeyCode left, KeyCode right, KeyCode pickup, KeyCode balanceRight, KeyCode balanceLeft)> playerKeys =
-        new Dictionary<int, (KeyCode, KeyCode, KeyCode, KeyCode, KeyCode, KeyCode)>()
+    private Dictionary<int, (KeyCode forward, KeyCode Backward, KeyCode left, KeyCode right, KeyCode pickup, KeyCode balanceRight, KeyCode balanceLeft)> playerKeys =
+        new Dictionary<int, (KeyCode, KeyCode, KeyCode, KeyCode, KeyCode, KeyCode, KeyCode)>()
         {
-            { 1, (KeyCode.W, KeyCode.A, KeyCode.D, KeyCode.G, KeyCode.R, KeyCode.E) },
-            { 2, (KeyCode.UpArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.RightShift, KeyCode.O, KeyCode.P) },
-            { 3, (KeyCode.I, KeyCode.J, KeyCode.L, KeyCode.K, KeyCode.U, KeyCode.Y) }
+            { 1, (KeyCode.W,KeyCode.S, KeyCode.A, KeyCode.D, KeyCode.G, KeyCode.R, KeyCode.E) },
+            { 2, (KeyCode.UpArrow,KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.RightShift, KeyCode.O, KeyCode.P) },
+            { 3, (KeyCode.I,KeyCode.K, KeyCode.J, KeyCode.L, KeyCode.K, KeyCode.U, KeyCode.Y) }
         };
 
     void Start()
@@ -43,6 +43,14 @@ public class AntSpawner : MonoBehaviour
     {
         int spawnIndex = 0;
 
+        // Find the Canvas in the scene
+        Canvas canvas = FindObjectOfType<Canvas>();
+        if (canvas == null)
+        {
+            Debug.LogError("Canvas not found in the scene!");
+            return;
+        }
+
         foreach (int playerID in remainingPlayers)
         {
             if (spawnIndex >= spawnPoints.Length)
@@ -56,6 +64,8 @@ public class AntSpawner : MonoBehaviour
 
             // יצירת נמלה חדשה
             GameObject newAnt = Instantiate(antPrefab, spawnPoint.position, Quaternion.identity);
+            // Set the parent of the instantiated ant to be the Canvas
+            newAnt.transform.SetParent(canvas.transform, true);  // false keeps the local position and scale
 
             // הגדרת צבע לפי שחקן
             SpriteRenderer renderer = newAnt.GetComponent<SpriteRenderer>();
@@ -73,6 +83,7 @@ public class AntSpawner : MonoBehaviour
                 {
                     var keys = playerKeys[playerID];
                     antMovement.moveForwardKey = keys.forward;
+                    antMovement.moveBackwardKey = keys.Backward;
                     antMovement.rotateLeftKey = keys.left;
                     antMovement.rotateRightKey = keys.right;
                     antMovement.pickupKey = keys.pickup;
@@ -85,6 +96,13 @@ public class AntSpawner : MonoBehaviour
 
     void SpawnFoodForPlayers()
     {
+        Canvas canvas = FindObjectOfType<Canvas>();
+        if (canvas == null)
+        {
+            Debug.LogError("Canvas not found in the scene!");
+            return;
+        }
+
         for (int i = 0; i < remainingPlayers.Count; i++)
         {
             if (i >= foodSpawnPoints.Length || i >= foodPrefabs.Length)
@@ -95,6 +113,7 @@ public class AntSpawner : MonoBehaviour
 
             Transform foodSpawnPoint = foodSpawnPoints[i];
             GameObject food = Instantiate(foodPrefabs[i], foodSpawnPoint.position, Quaternion.identity);
+            food.transform.SetParent(canvas.transform, true);  // false keeps the local position and scale
             FoodCarry foodCarry = food.GetComponent<FoodCarry>();
 
             if (foodCarry != null)
