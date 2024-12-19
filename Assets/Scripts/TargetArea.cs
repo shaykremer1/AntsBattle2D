@@ -9,8 +9,7 @@ public class TargetArea : MonoBehaviour
 
     //wtf
     //test212213
-    //alonppppp
-    //fix!
+    //alonppppp1
     // כאשר האוכל נכנס לאזור המטרה
     private void OnTriggerEnter2D(Collider2D collision)
     {
