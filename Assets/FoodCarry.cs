@@ -3,6 +3,7 @@ using UnityEngine;
 
 public class FoodCarry : MonoBehaviour
 {
+
     [Header("Food Settings")]
     public int playerID; // מזהה השחקן שהאוכל שייך לו
     public static int totalFoodCount = 0; // ספירת כל הפירות במשחק
@@ -13,6 +14,10 @@ public class FoodCarry : MonoBehaviour
     private Vector3 lastStablePosition; // המיקום היציב האחרון של האוכל
     private float balanceOffset = 0f; // חוסר האיזון של האוכל
     private float previousRotation = 0f; // הזווית הקודמת של הנמלה לניהול איזון
+    private bool isRepositioned = false; // האם מיקום הפרי הותאם לנמלה השנייה
+
+    [Header("Position Settings")]
+    public float fruitHeightOffset = 0.3f; // הטיה קלה למעלה
 
     [Header("Balance Settings")]
     public float maxBalanceOffset = 1.5f; // חוסר איזון מקסימלי לפני נפילה
@@ -22,10 +27,16 @@ public class FoodCarry : MonoBehaviour
     public float tiltSpeed = 0.5f; // מהירות נטייה הדרגתית של האוכל
     public float rotationSpeed = 60f; // מהירות הסיבוב של האוכל
 
+
     [Header("Speed Settings")]
     public float speedReductionFactor = 0.5f; // הפחתת מהירות לנמלה הראשונה
     public float speedBoostWithSecondAnt = 1.2f; // תוספת מהירות עם נמלה שנייה
     public float heightValue = 0.5f;
+
+    [Header("Rotation Settings")]
+    public float foodRotationImpact = 0.03f; // שליטה בכמות התזוזה של האוכל בעת סיבוב הנמלים
+    public float secondAntRotationLerpSpeed = 5f; // מהירות סיבוב חלקה של הנמלה השנייה (כמו אוטובוס אקורדיון)
+
     void Start()
     {
         totalFoodCount++; // הגדלת הספירה של הפירות בתחילת המשחק
@@ -45,18 +56,18 @@ public class FoodCarry : MonoBehaviour
     {
         if (leadAnt != null)
         {
-            // מיקום האוכל במרכז בין הנמלה הראשונה והשנייה
             if (secondAnt != null)
             {
                 // הנמלה השנייה עוקבת אחרי הנמלה הראשונה
                 Vector3 followPosition = leadAnt.position - leadAnt.up * 0.5f;
                 secondAnt.position = Vector3.Lerp(secondAnt.position, followPosition, Time.deltaTime * 10f);
 
-                // סיבוב הנמלה השנייה להתאים לנמלה הראשונה
-                secondAnt.rotation = Quaternion.Lerp(secondAnt.rotation, leadAnt.rotation, Time.deltaTime * 10f);
+                // סיבוב חלק של הנמלה השנייה כמו אוטובוס אקורדיון
+                Quaternion targetRotation = Quaternion.LookRotation(Vector3.forward, leadAnt.up);
+                secondAnt.rotation = Quaternion.Lerp(secondAnt.rotation, targetRotation, Time.deltaTime * secondAntRotationLerpSpeed);
 
-                // עדכון מיקום האוכל
-                transform.position = (leadAnt.position + secondAnt.position) / 2;
+                // מיקום הפרי בין שתי הנמלים
+                transform.position = (leadAnt.position + secondAnt.position) / 2 + Vector3.up * fruitHeightOffset;
             }
             else
             {
@@ -65,6 +76,8 @@ public class FoodCarry : MonoBehaviour
             }
         }
     }
+
+
 
 
 
@@ -94,18 +107,18 @@ public class FoodCarry : MonoBehaviour
         {
             // שליטה ידנית באיזון
             if (balancingAnt.IsBalancingRight())
-                balanceOffset += (balanceSpeed * 0.5f) * Time.deltaTime; // איטי יותר
+                balanceOffset += (balanceSpeed * 0.5f) * Time.deltaTime;
             if (balancingAnt.IsBalancingLeft())
-                balanceOffset -= (balanceSpeed * 0.5f) * Time.deltaTime; // איטי יותר
+                balanceOffset -= (balanceSpeed * 0.5f) * Time.deltaTime;
         }
 
-        // כוח גרביטציה מדומה – האוכל נשמט לצד הנוטה באיטיות
-        balanceOffset = Mathf.Lerp(balanceOffset, balanceOffset + Mathf.Sign(balanceOffset) * (tiltSpeed * 0.5f), Time.deltaTime);
+        // כוח גרביטציה מדומה – נופל מהר יותר לצד הנוטה
+        balanceOffset = Mathf.Lerp(balanceOffset, balanceOffset + Mathf.Sign(balanceOffset) * tiltSpeed, Time.deltaTime);
 
-        // השפעת סיבוב על האיזון (פי 2 איטי יותר)
+        // השפעת סיבוב הנמלה המובילה על האיזון (כעת עם שליטה)
         float currentRotation = leadAnt.eulerAngles.z;
         float rotationChange = Mathf.DeltaAngle(previousRotation, currentRotation);
-        balanceOffset += (rotationChange * rotationImpact * 0.5f);
+        balanceOffset += rotationChange * foodRotationImpact;
 
         previousRotation = currentRotation;
 
@@ -119,6 +132,7 @@ public class FoodCarry : MonoBehaviour
             Debug.Log("Food fell due to imbalance!");
         }
     }
+
 
 
 
@@ -153,7 +167,7 @@ public class FoodCarry : MonoBehaviour
         if (leadAnt != null)
         {
             AntMovement leadMovement = leadAnt.GetComponent<AntMovement>();
-            leadMovement.ResetSpeed(); // איפוס מהירות
+            leadMovement.ResetSpeed();
             leadAnt = null;
         }
 
@@ -161,7 +175,7 @@ public class FoodCarry : MonoBehaviour
         {
             secondAnt.SetParent(null);
             AntMovement secondMovement = secondAnt.GetComponent<AntMovement>();
-            secondMovement.UnlockMovement(); // החזרת שליטה לנמלה השנייה
+            secondMovement.UnlockMovement();
             secondAnt = null;
         }
 
@@ -189,19 +203,25 @@ public class FoodCarry : MonoBehaviour
         {
             secondAnt = secondAntTransform;
 
-            // מיקום הנמלה השנייה בזנב של הנמלה הראשונה
-            Vector3 secondAntPosition = leadAnt.position - leadAnt.up * 0.5f; // חצי יחידה מאחורי הראשונה
+            // חיבור הנמלה השנייה מאחורי הנמלה הראשונה
+            Vector3 secondAntPosition = leadAnt.position - leadAnt.up * 0.5f;
             secondAnt.position = secondAntPosition;
-            // מיקום הפרי בין שתי הנמלים עם הרמה קלה למעלה
-            transform.position = (leadAnt.position + secondAnt.position) / 2 + Vector3.up * heightValue;
-            Debug.Log("root position fruit"+ gameObject.transform.position);
+
+            // סיבוב הנמלה השנייה בהתאם לנמלה הראשונה
+            secondAnt.rotation = leadAnt.rotation;
+
+            // מיקום הפרי באמצע בין שתי הנמלים
+            Vector3 midPoint = (leadAnt.position + secondAnt.position) / 2;
+            transform.position = midPoint + Vector3.up * fruitHeightOffset;
 
             // איפוס האיזון כאשר הנמלה השנייה מצטרפת
             balanceOffset = 0f;
 
-            Debug.Log("Second ant joined. Food repositioned and balanced.");
+            Debug.Log("Second ant joined successfully.");
         }
     }
+
+
 
 
     void OnDestroy()
