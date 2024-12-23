@@ -100,15 +100,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerID: 2
+  fruitHeightOffset: 0.3
   maxBalanceOffset: 1.2
   balanceSpeed: 1.5
   balanceSpeedWithSecondAnt: 0.5
   rotationImpact: 0.03
   tiltSpeed: 0.1
   rotationSpeed: 60
-  speedReductionFactor: 0.5
+  speedReductionFactor: 0.3
   speedBoostWithSecondAnt: 1.2
   heightValue: 0.5
+  foodRotationImpact: 0.03
+  secondAntRotationLerpSpeed: 5
 --- !u!61 &5084931903571064898
 BoxCollider2D:
   m_ObjectHideFlags: 0
